@@ -153,13 +153,15 @@ def xml_string_to_json():
     preserve_entity = parse_boolean_from_param(request.args["preserve_entity"])
     logger.info("Received args: " + str(dict(request.args)) + " Preserve entity: " + str(preserve_entity))
     request_payload = request.get_json()
-    
+    status_code = 200
+
     def emit_entities():
         try:
-            # Sesam packs entities in an array before firing off a request and expects an array back. 
+            # Sesam packs entities in an array before firing off a request and expects an array back.             
             yield '['
             first = True
-            for item in request_payload:            
+            for item in request_payload: 
+                currentItem = item["_id"]
                 if not first:
                     yield ','
                 else:
@@ -178,7 +180,7 @@ def xml_string_to_json():
                 if preserve_entity is True:
                     #Keep all incoming properties in addition to the parsed xml
                     if(hasXMLData):                
-                        item["xml_as_json"] = xmltodict.parse(xmlString,encoding=xml_payload_encoding, xml_attribs=True)
+                        item["xml_as_json"] = xmltodict.parse(xmlString,encoding=xml_payload_encoding, xml_attribs=True)                                                
                     yield json.dumps(item.copy())      
                 else:
                     xml_as_dict = {}
@@ -189,9 +191,11 @@ def xml_string_to_json():
             yield ']'
                                     
         except Exception as ex:
-            logger.error(f"Exiting with error: {ex}")
+            logger.error(f"Exiting with error on _id {currentItem}: {ex}")
+            global status_code
+            status_code = 500
 
-    return Response(response=emit_entities(), mimetype='application/json')
+    return Response(response=emit_entities(), mimetype='application/json', status=status_code)
     
 def preserve_sesam_special_fields(target, original):
     """
